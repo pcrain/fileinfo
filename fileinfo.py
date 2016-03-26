@@ -149,6 +149,7 @@ def dprint(s):
 
 #Add an entry to the database
 def addentry(f,d):
+  d=d.replace("'", "''")
   isfile = False
   m=""
   if os.path.isfile(f):
