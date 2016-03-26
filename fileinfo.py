@@ -1,19 +1,17 @@
 #!/usr/bin/python
 #Program for tracking information on files
 
-import sqlite3
-import os, sys
-import hashlib
-import argparse
+import sqlite3, os, sys, hashlib, argparse
 
-AUTOUPDATE=True
-verbosity=0
-showmissing=1
+AUTOUPDATE=True   #Whether entries are automatically updated when viewed
+verbosity=0       #Verbosity of output
+showmissing=1     #Whether to show files without entries in listings
 
-conn = sqlite3.connect('/home/pretzel/workspace/fileinfo/finfo.db')
+conn = sqlite3.connect(os.path.expanduser("~")+'/.finfo.db')
 c = conn.cursor()
 c.execute('CREATE TABLE IF NOT EXISTS ENTRIES (id integer PRIMARY KEY, node integer, base varchar, path varchar, md5 varchar, size integer, time integer, description varchar)')
 
+#Class for enumerating table columns
 class E:
   key=0
   node=1
@@ -24,6 +22,7 @@ class E:
   time=6
   description=7
 
+#Class for colors
 class col:
   BLN      ='\033[0m'            # Blank
   UND      ='\033[1;4m'          # Underlined
@@ -38,10 +37,12 @@ class col:
   CYN      ='\033[1;36m'         # Cyan
   WHT      ='\033[1;37m'         # White
 
+#Print with lead whitespace at the beginning
 def jprint(lead,str):
   # :
   print(lead*' '+str)
 
+#Compute md5sum for file
 def md5(fname):
   #http://stackoverflow.com/questions/3431825/generating-a-md5-checksum-of-a-file
   hash_md5 = hashlib.md5()
@@ -50,11 +51,13 @@ def md5(fname):
       hash_md5.update(chunk)
   return hash_md5.hexdigest()
 
+#Commit changes to the database and exit
 def niceexit(code=1):
   conn.commit()
   conn.close()
   sys.exit(code)
 
+#Print the database entry (if any) matching the file in directory d
 def printfile(f,d=""):
   f=os.path.abspath(f)
   isfile = os.path.isfile(f)
@@ -133,10 +136,6 @@ def printfile(f,d=""):
   if AUTOUPDATE and toupdate:
     desql(usql)
 
-def printdir(d):
-  for f in sorted(os.listdir(d),key=lambda s: s.lower()):
-    printfile(f)
-
 #Debug execute SQL
 def desql(sql):
   # print(col.MGN+sql+col.BLN)
@@ -148,6 +147,7 @@ def dprint(s):
   pass
   # print(s)
 
+#Add an entry to the database
 def addentry(f,d):
   isfile = False
   m=""
@@ -202,6 +202,7 @@ def addentry(f,d):
   else:
     desql("INSERT INTO ENTRIES VALUES(NULL,"+n+",'"+fname+"','"+curdir+"','"+m+"',"+s+","+t+",'"+d+"')")
 
+#Scan through matches for entries to update / fix
 def fixscan(sql,n,f,d,m,s,t):
   res = desql(sql)
   while res:
@@ -222,6 +223,7 @@ def fixscan(sql,n,f,d,m,s,t):
     res=c.fetchone()
   return False
 
+#Scan through matches for entries to remove
 def removescan(sql):
   res = desql(sql)
   while res:
@@ -238,6 +240,7 @@ def removescan(sql):
         break
     res=c.fetchone()
 
+#Remove an entry from the database
 def removeentry(f):
   f=os.path.abspath(f)
   isfile = os.path.isfile(f)
@@ -253,6 +256,7 @@ def removeentry(f):
   removescan("SELECT * FROM ENTRIES WHERE path='"+d+"' AND base='"+f+"'")
   niceexit()
 
+#Update / fix an orphaned entry in the database
 def fixentry(f):
   if not os.path.exists(f):
     print("File " + col.RED + f + col.BLN + " does not exist!")
@@ -287,11 +291,11 @@ def fixentry(f):
   print(col.RED+"No suitable orphan found"+col.BLN)
   niceexit()
 
+#Print all entries in the database
 def printall(onlyorphans=False):
   res = desql("SELECT * FROM ENTRIES")
   while res:
     dprint(res)
-
     fpath=res[E.path]+"/"+res[E.base]
     if os.path.exists(fpath):
       if not onlyorphans:
@@ -333,7 +337,6 @@ def main():
     fixentry(args.fix)
     niceexit()
   if args.orphans:
-    # printall()
     printall(True)
     niceexit()
   if args.all:
@@ -344,7 +347,8 @@ def main():
       addentry(f,args.description)
     niceexit()
   if len(args.files) == 0 and not anyargs:
-    printdir(os.getcwd())
+    for f in sorted(os.listdir(os.getcwd()),key=lambda s: s.lower()):
+      printfile(f)
     niceexit()
   else:
     if args.remove:
