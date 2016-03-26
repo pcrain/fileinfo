@@ -245,14 +245,11 @@ def removeentry(f):
   f=os.path.abspath(f)
   isfile = os.path.isfile(f)
   if isfile:
-    d=os.path.dirname(os.path.abspath(f))
+    d=os.path.dirname(f)
     f=f.split('/')[-1]
   else:
-    d='/'.join(os.path.abspath(f).split('/')[:-1])
-
-  f=f.split('/')[-1]
-  d=os.path.dirname(os.path.abspath(f))
-
+    d='/'.join(f.split('/')[:-1])
+    f=f.split('/')[-1]
   removescan("SELECT * FROM ENTRIES WHERE path='"+d+"' AND base='"+f+"'")
   niceexit()
 
@@ -261,13 +258,22 @@ def fixentry(f):
   if not os.path.exists(f):
     print("File " + col.RED + f + col.BLN + " does not exist!")
     return
-  f=f.split('/')[-1]
-  d=os.path.dirname(os.path.abspath(f))
+
+  f=os.path.abspath(f)
+  isfile = os.path.isfile(f)
+  if isfile:
+    d=os.path.dirname(f)
+    f=f.split('/')[-1]
+  else:
+    d='/'.join(f.split('/')[:-1])
+    f=f.split('/')[-1]
+
   fs=os.stat(f)
   isfile = os.path.isfile(f)
   n=str(fs.st_ino)
   s=str(fs.st_size)
   t=str(fs.st_mtime)
+  m=""
   if isfile:
     m = md5(f)
 
