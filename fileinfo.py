@@ -65,9 +65,11 @@ def printfile(f,d=""):
   if not d:
     if isfile:
       d=os.path.dirname(f)
+      if d != "/":
+        d = d+"/"
       f=f.split('/')[-1]
     else:
-      d='/'.join(f.split('/')[:-1])
+      d='/'.join(f.split('/')[:-1])+"/"
       f=f.split('/')[-1]
   n=str(fs.st_ino)
   s=str(fs.st_size)
@@ -161,6 +163,8 @@ def addentry(f,d):
 
   fname=os.path.abspath(f).split('/')[-1]
   curdir=os.path.dirname(os.path.abspath(f))
+  if curdir != "/":
+    curdir = curdir+"/"
   print(f+": "+col.YLW+d+col.BLN)
   fs=os.stat(f)
   n=str(fs.st_ino)
@@ -183,10 +187,10 @@ def addentry(f,d):
       dprint(res)
   if exists > 0:
     if exists == 1:
-      print("An entry already exists for " + col.WHT + res[3]+"/"+res[2] + ": " + col.CYN + res[7] + col.BLN)
+      print("An entry already exists for " + col.WHT + res[3]+res[2] + ": " + col.CYN + res[7] + col.BLN)
       prompt="Overwrite (y) or cancel (n)? "
     elif exists == 2:
-      print("A similar entry exists for " + col.WHT + res[3]+"/"+res[2] + ": " + col.CYN + res[7] + col.BLN)
+      print("A similar entry exists for " + col.WHT + res[3]+res[2] + ": " + col.CYN + res[7] + col.BLN)
       prompt="Overwrite (y) or add new (n)? "
     while True:
       inp = input(prompt)
@@ -211,7 +215,7 @@ def fixscan(sql,n,f,d,m,s,t):
       res=c.fetchone() #Not an orphan, so continue
       continue
     jprint(2,str(res))
-    print("Orphan found for " + col.YLW + res[E.path]+"/"+res[E.base]+"\n  "+col.CYN + res[E.description]+col.BLN)
+    print("Orphan found for " + col.YLW + res[E.path]+res[E.base]+"\n  "+col.CYN + res[E.description]+col.BLN)
     while True:
       inp = input("Reassign (y), skip (n), or quit (q)? ")
       if inp == "q":
@@ -229,7 +233,7 @@ def removescan(sql):
   res = desql(sql)
   while res:
     # jprint(2,str(res))
-    print("Entry found for " + col.YLW + res[E.path]+"/"+res[E.base]+"\n  "+col.CYN + res[E.description]+col.BLN)
+    print("Entry found for " + col.YLW + res[E.path]+res[E.base]+"\n  "+col.CYN + res[E.description]+col.BLN)
     while True:
       inp = input("Delete (y), skip (n), or quit (q)? ")
       if inp == "q":
@@ -247,9 +251,11 @@ def removeentry(f):
   isfile = os.path.isfile(f)
   if isfile:
     d=os.path.dirname(f)
+    if d != "/":
+      d = d+"/"
     f=f.split('/')[-1]
   else:
-    d='/'.join(f.split('/')[:-1])
+    d='/'.join(f.split('/')[:-1])+"/"
     f=f.split('/')[-1]
   removescan("SELECT * FROM ENTRIES WHERE path='"+d+"' AND base='"+f+"'")
   niceexit()
@@ -265,9 +271,11 @@ def fixentry(f):
   isfile = os.path.isfile(f)
   if isfile:
     d=os.path.dirname(f)
+    if d != "/":
+      d = d+"/"
     f=f.split('/')[-1]
   else:
-    d='/'.join(f.split('/')[:-1])
+    d='/'.join(f.split('/')[:-1])+"/"
     f=f.split('/')[-1]
 
   isfile = os.path.isfile(f)
@@ -283,7 +291,7 @@ def fixentry(f):
   else:
     res = desql("SELECT * FROM ENTRIES WHERE path='"+d+"' AND base='"+f+"' AND node='"+n+"'")
   if res:
-    print(col.RED+"File " + d+"/"+f + " is already in the database!"+col.BLN)
+    print(col.RED+"File " + d+f + " is already in the database!"+col.BLN)
     return
 
   print(col.WHT+"Searching orphans with same basenames..."+col.BLN)
@@ -303,7 +311,7 @@ def printall(onlyorphans=False):
   res = desql("SELECT * FROM ENTRIES")
   while res:
     dprint(res)
-    fpath=res[E.path]+"/"+res[E.base]
+    fpath=res[E.path]+res[E.base]
     if os.path.exists(fpath):
       if not onlyorphans:
         print(col.GRN+fpath+col.BLN)
