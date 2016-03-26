@@ -60,6 +60,7 @@ def niceexit(code=1):
 #Print the database entry (if any) matching the file in directory d
 def printfile(f,d=""):
   f=os.path.abspath(f)
+  fs=os.stat(f)
   isfile = os.path.isfile(f)
   if not d:
     if isfile:
@@ -68,7 +69,6 @@ def printfile(f,d=""):
     else:
       d='/'.join(f.split('/')[:-1])
       f=f.split('/')[-1]
-  fs=os.stat(f)
   n=str(fs.st_ino)
   s=str(fs.st_size)
   t=str(fs.st_mtime)
@@ -227,7 +227,7 @@ def fixscan(sql,n,f,d,m,s,t):
 def removescan(sql):
   res = desql(sql)
   while res:
-    jprint(2,str(res))
+    # jprint(2,str(res))
     print("Entry found for " + col.YLW + res[E.path]+"/"+res[E.base]+"\n  "+col.CYN + res[E.description]+col.BLN)
     while True:
       inp = input("Delete (y), skip (n), or quit (q)? ")
@@ -260,6 +260,7 @@ def fixentry(f):
     return
 
   f=os.path.abspath(f)
+  fs=os.stat(f)
   isfile = os.path.isfile(f)
   if isfile:
     d=os.path.dirname(f)
@@ -268,7 +269,6 @@ def fixentry(f):
     d='/'.join(f.split('/')[:-1])
     f=f.split('/')[-1]
 
-  fs=os.stat(f)
   isfile = os.path.isfile(f)
   n=str(fs.st_ino)
   s=str(fs.st_size)
@@ -349,8 +349,11 @@ def main():
     printall(False)
     niceexit()
   if args.description:
-    for f in args.files:
-      addentry(f,args.description)
+    if len(args.files) == 0:
+      print(col.RED + "No files specified!" + col.BLN)
+    else:
+      for f in args.files:
+        addentry(f,args.description)
     niceexit()
   if len(args.files) == 0 and not anyargs:
     for f in sorted(os.listdir(os.getcwd()),key=lambda s: s.lower()):
