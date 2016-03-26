@@ -55,28 +55,16 @@ def niceexit(code=1):
   conn.close()
   sys.exit(code)
 
-# def test(CWD):
-  #   # print("Hi")
-  #   for f in sorted(os.listdir("."),key=lambda s: s.lower()):
-  #     print(col.GRN+f+col.BLN)
-  #     fs=os.stat(f)
-  #     # print("  Mode: "+str(fs.st_mode))
-  #     jprint(2,"Path: "+CWD)
-  #     jprint(2,"Base: "+f)
-  #     jprint(2,"Node: "+str(fs.st_ino))
-  #     jprint(2,"Size: "+str(fs.st_size))
-  #     if os.path.isfile(f):
-  #       jprint(2,"MD5: "+md5(f))
-
 def printfile(f,d=""):
   f=os.path.abspath(f)
   isfile = os.path.isfile(f)
   if not d:
     if isfile:
       d=os.path.dirname(f)
+      f=f.split('/')[-1]
     else:
       d='/'.join(f.split('/')[:-1])
-  f=f.split('/')[-1]
+      f=f.split('/')[-1]
   fs=os.stat(f)
   n=str(fs.st_ino)
   s=str(fs.st_size)
@@ -132,7 +120,7 @@ def printfile(f,d=""):
       jprint(2,col.YLW+"Size: " + str(res[E.size]) + " -> " + s+col.BLN)
     elif verbosity > 0:
       jprint(2,"Size: "+s)
-    if res and t != str(res[E.time]):
+    if verbosity > 0 and res and t != str(res[E.time]):
       jprint(2,col.YLW+"Time: " + str(res[E.time]) + " -> " + t+col.BLN)
     elif verbosity > 0:
       jprint(2,"Time: "+t)
@@ -147,7 +135,7 @@ def printfile(f,d=""):
 
 def printdir(d):
   for f in sorted(os.listdir(d),key=lambda s: s.lower()):
-    printfile(f,d)
+    printfile(f)
 
 #Debug execute SQL
 def desql(sql):
@@ -279,7 +267,10 @@ def fixentry(f):
   if isfile:
     m = md5(f)
 
-  res = desql("SELECT * FROM ENTRIES WHERE path='"+d+"' AND base='"+f+"' AND node='"+n+"' AND md5='"+m+"'")
+  if isfile:
+    res = desql("SELECT * FROM ENTRIES WHERE path='"+d+"' AND base='"+f+"' AND node='"+n+"' AND md5='"+m+"'")
+  else:
+    res = desql("SELECT * FROM ENTRIES WHERE path='"+d+"' AND base='"+f+"' AND node='"+n+"'")
   if res:
     print(col.RED+"File " + d+"/"+f + " is already in the database!"+col.BLN)
     return
@@ -315,8 +306,6 @@ def printall(onlyorphans=False):
 def configParser():
   parser = argparse.ArgumentParser("fileinfo")
   verb = parser.add_mutually_exclusive_group()
-  # mode.add_argument("-c", "--clear",    help="clear the logfile",                  action="store_true")
-  # parser.add_argument("-u", "--user",    type=str,   help="your Skype username", required=True)
   parser.add_argument("-f", "--fix", metavar='<filename>',  type=str,   help="find and fix a description among orphaned entries")
   parser.add_argument("-d", "--description", metavar='<description>', type=str,   help="add descriptions for listed files")
   parser.add_argument("-o", "--orphans", help="print orphaned entries", action="store_true")
