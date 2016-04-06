@@ -92,12 +92,20 @@ def printfile(f,d=""):
     res = desql("SELECT * FROM ENTRIES WHERE path='"+d+"' AND base='"+f+"'")
     if res:
       desc=res[7]
-      usql = "UPDATE ENTRIES SET node="+n+",base='"+f+"',path='"+d+"',md5='"+m+"', size="+s+",time="+t+",description='"+desc+"' WHERE path='"+d+"' AND base='"+f+"'"
+      if isfile:
+        usql = "UPDATE ENTRIES SET node="+n+",base='"+f+"',path='"+d+"',md5='"+m+"', size="+s+",time="+t+",description='"+desc+"' WHERE path='"+d+"' AND base='"+f+"'"
+      else:
+        usql = "UPDATE ENTRIES SET node="+n+",base='"+f+"',path='"+d+"', size="+s+",time="+t+",description='"+desc+"' WHERE path='"+d+"' AND base='"+f+"'"
     elif isfile:
       res = desql("SELECT * FROM ENTRIES WHERE node='"+n+"' AND md5='"+m+"'")
       if res:
         desc=res[7]
         usql = "UPDATE ENTRIES SET node="+n+",base='"+f+"',path='"+d+"',md5='"+m+"', size="+s+",time="+t+",description='"+desc+"' WHERE node='"+n+"' AND md5='"+m+"'"
+    else:
+      res = desql("SELECT * FROM ENTRIES WHERE node='"+n+"'")
+      if res:
+        desc=res[7]
+        usql = "UPDATE ENTRIES SET node="+n+",base='"+f+"',path='"+d+"', size="+s+",time="+t+",description='"+desc+"' WHERE node='"+n+"'"
     if res:
       toupdate=True
       color=col.YLW
@@ -342,12 +350,13 @@ def main():
   args = parser.parse_args()
   anyargs=False
   #Parse other arguments
-  if args.verbose:
-    verbosity=1
-  elif args.quiet:
-    verbosity=-1
   if args.existing:
     showmissing=0
+  if args.verbose:
+    verbosity=1
+    showmissing=1
+  elif args.quiet:
+    verbosity=-1
   if args.fix:
     fixentry(args.fix)
     niceexit()
