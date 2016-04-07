@@ -61,6 +61,8 @@ def niceexit(code=1):
 #Print the database entry (if any) matching the file in directory d
 def printfile(of,d=""):
   lf=os.path.abspath(of)
+  if not os.path.exists(lf):
+    return
   f=os.path.realpath(lf)
   # print(f)
 
@@ -68,10 +70,12 @@ def printfile(of,d=""):
   isfile = os.path.isfile(f)
 
   if isfile:
+    d=os.path.dirname(f)
     if d != "/":
       d = d+"/"
-    d=os.path.dirname(f)
     ld=os.path.dirname(lf)
+    if ld != "/":
+      ld = ld+"/"
   elif d != "/":
     d='/'.join(f.split('/')[:-1])+"/"
     ld='/'.join(lf.split('/')[:-1])+"/"
@@ -364,7 +368,10 @@ def printall(onlyorphans=False):
   res = desql("SELECT * FROM ENTRIES")
   while res:
     dprint(res)
-    fpath=res[E.path]+res[E.base]
+    if res[E.path] != "/":
+      fpath=res[E.path]+"/"+res[E.base]
+    else:
+      fpath=res[E.path]+res[E.base]
     if os.path.exists(fpath):
       if not onlyorphans:
         print(col.GRN+fpath+col.BLN)
