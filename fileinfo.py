@@ -3,7 +3,8 @@
 
 import sqlite3, os, sys, hashlib, argparse
 
-AUTOUPDATE=True   #Whether entries are automatically updated when viewed
+DEBUG=False
+AUTOUPDATE=True  #Whether entries are automatically updated when viewed
 verbosity=0       #Verbosity of output
 showmissing=1     #Whether to show files without entries in listings
 
@@ -58,63 +59,103 @@ def niceexit(code=1):
   sys.exit(code)
 
 #Print the database entry (if any) matching the file in directory d
-def printfile(f,d=""):
-  f=os.path.abspath(f)
-  fs=os.stat(f)
+def printfile(of,d=""):
+  lf=os.path.abspath(of)
+  f=os.path.realpath(lf)
+  # print(f)
+
+  islink = os.path.islink(lf)
   isfile = os.path.isfile(f)
-  if not d:
-    if isfile:
-      d=os.path.dirname(f)
-      if d != "/":
-        d = d+"/"
-      f=f.split('/')[-1]
-    else:
-      d='/'.join(f.split('/')[:-1])+"/"
-      f=f.split('/')[-1]
-  n=str(fs.st_ino)
-  s=str(fs.st_size)
-  t=str(fs.st_mtime)
+
   if isfile:
-    m = md5(f)
+    if d != "/":
+      d = d+"/"
+    d=os.path.dirname(f)
+    ld=os.path.dirname(lf)
+  elif d != "/":
+    d='/'.join(f.split('/')[:-1])+"/"
+    ld='/'.join(lf.split('/')[:-1])+"/"
+
+  f=f.split('/')[-1]
+  lf=lf.split('/')[-1]
+
+  if os.path.exists(f):
+    fs=os.stat(f)
+    n=str(fs.st_ino)
+    s=str(fs.st_size)
+    t=str(fs.st_mtime)
+    if isfile:
+      m = md5(f)
+    else:
+      m = ""
+  else:
+    fs=n=s=t=m=""
+
+  lfs=os.lstat(lf)
+  ln=str(lfs.st_ino)
+  ls=str(lfs.st_size)
+  lt=str(lfs.st_mtime)
+  if isfile:
+    lm = md5(lf)
+  else:
+    lm = ""
+
   # print(fs)
 
   toupdate=False
   desc=""
   color=col.RED
-  if isfile:
-    res = desql("SELECT * FROM ENTRIES WHERE path='"+d+"' AND base='"+f+"' AND node='"+n+"' AND md5='"+m+"'")
-  else:
-    res = desql("SELECT * FROM ENTRIES WHERE path='"+d+"' AND base='"+f+"' AND node='"+n+"'")
+
+  found = False
+  foundlink = False
+
+  #First try to look for a file / direcotry with the exact same qualities
+  res = desql("SELECT * FROM ENTRIES WHERE path='"+ld+"' AND base='"+lf+"' AND node='"+ln+"' AND md5='"+lm+"'")
   if res:
     color=col.GRN
-    desc=res[7]
-  else:
-    res = desql("SELECT * FROM ENTRIES WHERE path='"+d+"' AND base='"+f+"'")
+    found = True
+  #Follow any symlinks and check again for an exact match
+  elif islink:
+    res = desql("SELECT * FROM ENTRIES WHERE path='"+d+"' AND base='"+f+"' AND node='"+n+"' AND md5='"+m+"'")
     if res:
-      desc=res[7]
-      if isfile:
-        usql = "UPDATE ENTRIES SET node="+n+",base='"+f+"',path='"+d+"',md5='"+m+"', size="+s+",time="+t+",description='"+desc+"' WHERE path='"+d+"' AND base='"+f+"'"
-      else:
-        usql = "UPDATE ENTRIES SET node="+n+",base='"+f+"',path='"+d+"', size="+s+",time="+t+",description='"+desc+"' WHERE path='"+d+"' AND base='"+f+"'"
+      color=col.MGN
+      found = True
+      foundlink = True
+  if not found:
+    #Find files with matching paths and basenames
+    res = desql("SELECT * FROM ENTRIES WHERE path='"+ld+"' AND base='"+lf+"'")
+    if res:
+      usql = "UPDATE ENTRIES SET node="+ln+",base='"+lf+"',path='"+ld+"',md5='"+lm+"', size="+ls+",time="+lt+",description='"+desc+"' WHERE path='"+ld+"' AND base='"+lf+"'"
     elif isfile:
-      res = desql("SELECT * FROM ENTRIES WHERE node='"+n+"' AND md5='"+m+"'")
+      #Find files with matching inodes and md5sums
+      res = desql("SELECT * FROM ENTRIES WHERE node='"+ln+"' AND md5='"+lm+"'")
       if res:
-        desc=res[7]
-        usql = "UPDATE ENTRIES SET node="+n+",base='"+f+"',path='"+d+"',md5='"+m+"', size="+s+",time="+t+",description='"+desc+"' WHERE node='"+n+"' AND md5='"+m+"'"
+        usql = "UPDATE ENTRIES SET node="+ln+",base='"+lf+"',path='"+ld+"',md5='"+lm+"', size="+ls+",time="+lt+",description='"+desc+"' WHERE node='"+ln+"' AND md5='"+lm+"'"
     else:
-      res = desql("SELECT * FROM ENTRIES WHERE node='"+n+"'")
+      #Find directories with matching inodes
+      res = desql("SELECT * FROM ENTRIES WHERE node='"+ln+"'")
       if res:
-        desc=res[7]
-        usql = "UPDATE ENTRIES SET node="+n+",base='"+f+"',path='"+d+"', size="+s+",time="+t+",description='"+desc+"' WHERE node='"+n+"'"
+        usql = "UPDATE ENTRIES SET node="+ln+",base='"+lf+"',path='"+ld+"', size="+ls+",time="+lt+",description='"+desc+"' WHERE node='"+ln+"'"
     if res:
       toupdate=True
       color=col.YLW
 
-  if res or showmissing:
-    print(color+f+col.BLN)
+  if res:
+    desc=res[7]
+    print(color+lf+col.BLN)
+  elif showmissing:
+    print(color+lf+col.BLN)
 
   if desc:
     jprint(2,col.CYN+desc+col.BLN)
+
+  if not foundlink:
+    d = ld
+    f = lf
+    n = ln
+    s = ls
+    t = lt
+    m = lm
 
   if verbosity >= 0:
     if res and d != res[E.path]:
@@ -131,6 +172,7 @@ def printfile(f,d=""):
       jprint(2,"Node: "+n)
     if res and int(s) != res[E.size]:
       jprint(2,col.YLW+"Size: " + str(res[E.size]) + " -> " + s+col.BLN)
+      desql("UPDATE ENTRIES SET size="+s+" WHERE id="+str(res[E.key]))
     elif verbosity > 0:
       jprint(2,"Size: "+s)
     if verbosity > 0 and res and t != str(res[E.time]):
@@ -148,9 +190,12 @@ def printfile(f,d=""):
 
 #Debug execute SQL
 def desql(sql):
-  # print(col.MGN+sql+col.BLN)
+  if DEBUG: print(col.MGN+sql+col.BLN)
   c.execute(sql)
-  return c.fetchone()
+  res=c.fetchone()
+  if DEBUG and res:
+    print(col.BLU+str(res)+col.BLN)
+  return res
 
 #Debug print
 def dprint(s):
@@ -174,7 +219,7 @@ def addentry(f,d):
   if curdir != "/":
     curdir = curdir+"/"
   print(f+": "+col.YLW+d+col.BLN)
-  fs=os.stat(f)
+  fs=os.lstat(f)
   n=str(fs.st_ino)
   s=str(fs.st_size)
   t=str(fs.st_mtime)
@@ -341,15 +386,18 @@ def configParser():
   verb.add_argument("-q", "--quiet", help="print minimal information", action="store_true")
   parser.add_argument("-r", "--remove", help="remove the descriptions for the listed files", action="store_true")
   parser.add_argument("-e", "--existing", help="print only files with entries", action="store_true")
+  parser.add_argument("--debug", help="debugging SQL print", action="store_true")
   parser.add_argument('files', metavar='F', type=str, nargs='*',help='Files to describe')
   return parser
 
 def main():
-  global verbosity, showmissing
+  global verbosity, showmissing, DEBUG
   parser = configParser()
   args = parser.parse_args()
   anyargs=False
   #Parse other arguments
+  if args.debug:
+    DEBUG=True
   if args.existing:
     showmissing=0
   if args.verbose:
