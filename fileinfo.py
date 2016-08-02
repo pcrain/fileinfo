@@ -129,16 +129,19 @@ def printfile(of,d=""):
     #Find files with matching paths and basenames
     res = desql("SELECT * FROM ENTRIES WHERE path='"+ld+"' AND base='"+lf+"'")
     if res:
+      desc=res[7]
       usql = "UPDATE ENTRIES SET node="+ln+",base='"+lf+"',path='"+ld+"',md5='"+lm+"', size="+ls+",time="+lt+",description='"+desc+"' WHERE path='"+ld+"' AND base='"+lf+"'"
     elif isfile:
       #Find files with matching inodes and md5sums
       res = desql("SELECT * FROM ENTRIES WHERE node='"+ln+"' AND md5='"+lm+"'")
       if res:
+        desc=res[7]
         usql = "UPDATE ENTRIES SET node="+ln+",base='"+lf+"',path='"+ld+"',md5='"+lm+"', size="+ls+",time="+lt+",description='"+desc+"' WHERE node='"+ln+"' AND md5='"+lm+"'"
     else:
       #Find directories with matching inodes
       res = desql("SELECT * FROM ENTRIES WHERE node='"+ln+"'")
       if res:
+        desc=res[7]
         usql = "UPDATE ENTRIES SET node="+ln+",base='"+lf+"',path='"+ld+"', size="+ls+",time="+lt+",description='"+desc+"' WHERE node='"+ln+"'"
     if res:
       toupdate=True
@@ -185,9 +188,9 @@ def printfile(of,d=""):
       jprint(2,"Time: "+t)
     if isfile:
       if res and m != res[E.md5]:
-        jprint(3,col.YLW+"MD5: " + res[E.md5] + " -> " + m+col.BLN)
+        jprint(2,col.YLW+"MD5: " + res[E.md5] + " -> " + m+col.BLN)
       elif verbosity > 0:
-        jprint(3,"MD5: "+m)
+        jprint(2,"MD5: "+m)
 
   if AUTOUPDATE and toupdate:
     desql(usql)
@@ -368,10 +371,10 @@ def printall(onlyorphans=False):
   res = desql("SELECT * FROM ENTRIES")
   while res:
     dprint(res)
-    if res[E.path] != "/":
-      fpath=res[E.path]+"/"+res[E.base]
-    else:
-      fpath=res[E.path]+res[E.base]
+    # if res[E.path] != "/":
+    #   fpath=res[E.path]+"/"+res[E.base]
+    # else:
+    fpath=res[E.path]+res[E.base]
     if os.path.exists(fpath):
       if not onlyorphans:
         print(col.GRN+fpath+col.BLN)
